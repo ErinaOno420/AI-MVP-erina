@@ -8,6 +8,13 @@ on:
 permissions:
   contents: write
 
+# Serialize runs: overlapping scheduled + manual dispatches used to race on
+# `git push` and fail with "non-fast-forward (fetch first)". Queued runs wait
+# for the in-progress one instead of colliding with it.
+concurrency:
+  group: update-job-board
+  cancel-in-progress: false
+
 jobs:
   update:
     runs-on: ubuntu-latest

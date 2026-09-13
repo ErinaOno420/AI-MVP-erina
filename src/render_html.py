@@ -161,7 +161,7 @@ def _job_payload(j, today, slug=""):
 def _build_jsonld(jobs):
     """Structured data so Google can index the listings (Google for Jobs)."""
     items = []
-    # cap to open, sponsor-friendly jobs to keep the page light
+    # cap to open jobs to keep the page light
     listed = [j for j in jobs if j.get("open", True)][:120]
     for i, j in enumerate(listed, 1):
         posting = {
