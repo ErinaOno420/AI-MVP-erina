@@ -72,16 +72,6 @@ def _write_deferred_sitemap():
         pass
 
 
-def _coverage():
-    try:
-        p = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                         "companies.json")
-        c = json.load(open(p))
-        return len(c), len(set(x["ats"] for x in c))
-    except Exception:
-        return 0, 0
-
-
 def _esc(s):
     return html.escape(str(s or ""))
 
@@ -241,9 +231,7 @@ def _render_company_page(company, slug, roles, today):
             f'<div class="job-sub">{_esc(j.get("location"))}</div>'
             f'<div class="meta">{_esc(_py_meta_line(j))}</div>'
             f'</div><div class="card-side">{new}{apply}</div></div></article>')
-    sub = f"{len(roles)} open role{'s' if len(roles) != 1 else ''}"
-    if sline:
-        sub += " · " + sline
+    sub = sline or "Open roles"
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -344,12 +332,6 @@ def _write_site_files(payload, slugs, jobs, today):
 
 def render_html(jobs, profile, today):
     now = datetime.now(ET).strftime("%b %d, %Y \u00b7 %I:%M %p ET")
-    total = len(jobs)
-    open_now = sum(1 for j in jobs if j.get("open", True))
-    new_today = sum(1 for j in jobs if j.get("first_seen") == today)
-    sponsor_n = sum(1 for j in jobs if j.get("sponsors_visa"))
-    n_companies, n_ats = _coverage()
-
     companies = sorted({j.get("company") for j in jobs if j.get("company")})
     slugs = _company_slugs(companies)
     payload = [_job_payload(j, today, slugs.get(j.get("company") or "", ""))
@@ -362,12 +344,6 @@ def render_html(jobs, profile, today):
 
     page = _PAGE
     page = page.replace("%%NOW%%", _esc(now))
-    page = page.replace("%%TOTAL%%", str(total))
-    page = page.replace("%%OPEN_NOW%%", str(open_now))
-    page = page.replace("%%NEW_TODAY%%", str(new_today))
-    page = page.replace("%%SPONSOR_N%%", str(sponsor_n))
-    page = page.replace("%%N_COMPANIES%%", str(n_companies))
-    page = page.replace("%%N_ATS%%", str(n_ats))
     page = page.replace("%%SITE%%", SITE_URL)
     page = page.replace("%%JSONLD%%", _build_jsonld(jobs))
     page = page.replace("%%JOBS_JSON%%", jobs_json)
@@ -415,8 +391,6 @@ header.nav{position:sticky;top:0;z-index:60;background:rgba(255,255,255,.94);bac
 .mark{width:26px;height:26px;border:1.5px solid var(--ink);border-radius:7px;display:grid;place-items:center;font-size:12px;font-weight:800}
 .hsearch{flex:1;max-width:460px;padding:10px 14px;border:1.5px solid var(--ink);border-radius:10px;font-size:14px}
 .hsearch::placeholder{color:var(--mut)}
-.hcount{font-size:13px;font-weight:700;white-space:nowrap}
-.hcount b{font-family:ui-monospace,Menlo,Consolas,monospace}
 .nav-links{display:flex;gap:8px;align-items:center;margin-left:auto}
 .btn{font-size:13px;font-weight:600;padding:8px 14px;border-radius:8px;border:1.5px solid var(--ink);text-decoration:none;white-space:nowrap;transition:.12s;background:#fff;cursor:pointer}
 .btn-solid{background:var(--ink);color:#fff}.btn-solid:hover{background:#fff;color:var(--ink)}
@@ -466,8 +440,6 @@ main.results{flex:1;min-width:0}
 
 /* toolbar */
 .toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px;flex-wrap:wrap}
-.toolbar .rcount{font-size:14px;color:var(--ink2)}
-.toolbar .rcount b{color:var(--ink);font-family:ui-monospace,Menlo,Consolas,monospace}
 .sortsel{padding:9px 12px;border:1.5px solid var(--ink);border-radius:8px;font-size:13.5px;font-weight:600;background:#fff}
 
 /* cards */
@@ -546,7 +518,6 @@ footer a{font-weight:600}
   <div class="nav-in">
     <div class="brand"><span class="mark">JB</span> JobsBuddy</div>
     <input class="hsearch" id="q" type="search" placeholder="Search title, company, or description…" autocomplete="off" aria-label="Search jobs">
-    <span class="hcount" id="hcount"><b>%%TOTAL%%</b> roles</span>
     <button class="btn btn-ghost" id="filterToggle" aria-label="Open filters">Filters</button>
     <div class="nav-links">
       <a class="btn btn-ghost" href="https://github.com/SIDDARTHAREDDY8/JobsBuddy" target="_blank" rel="noopener">★ Star</a>
@@ -564,14 +535,7 @@ footer a{font-weight:600}
   <section class="hero">
     <div class="eyebrow">For international students · OPT / H-1B</div>
     <h1>Tech jobs from companies that actually sponsor visas.</h1>
-    <p>%%OPEN_NOW%% open roles — %%SPONSOR_N%% at confirmed H-1B sponsors. All experience levels, no security clearance. Updated every 3 hours. Free, forever.</p>
-    <div class="stats">
-      <div class="stat"><b>%%OPEN_NOW%%</b><span>Open roles</span></div>
-      <div class="stat"><b>%%NEW_TODAY%%</b><span>Added today</span></div>
-      <div class="stat"><b>%%SPONSOR_N%%</b><span>Visa sponsors</span></div>
-      <div class="stat"><b>%%N_COMPANIES%%</b><span>Companies scanned</span></div>
-      <div class="stat"><b>%%N_ATS%%</b><span>ATS systems</span></div>
-    </div>
+    <p>All experience levels, no security clearance. Updated every 3 hours. Free, forever.</p>
   </section>
 
   <div class="layout">
@@ -640,7 +604,6 @@ footer a{font-weight:600}
 
     <main class="results">
       <div class="toolbar">
-        <span class="rcount" id="rcount"></span>
         <select class="sortsel" id="sort" aria-label="Sort jobs">
           <option value="new">Sort: Newest</option>
           <option value="match">Sort: Best match</option>
@@ -834,8 +797,6 @@ function render(){
   for(var i = 0; i < slice.length; i++) html += cardHtml(slice[i], i);
   box.innerHTML = html;
   var n = filtered.length;
-  document.getElementById('hcount').innerHTML = '<b>' + n + '</b> role' + (n === 1 ? '' : 's');
-  document.getElementById('rcount').innerHTML = 'Showing <b>' + slice.length + '</b> of <b>' + n + '</b> roles';
   document.getElementById('empty').style.display = n ? 'none' : 'block';
   document.getElementById('more').style.display = (state.shown < n) ? '' : 'none';
 }
